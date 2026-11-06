@@ -1,4 +1,14 @@
 - insert:
     - id: misra-checker
       name: '@local/dsh-misra-checker'
-      config: {}
+      config:
+        # The project root holds far more than the code to check; narrow the
+        # default target to the folder that actually contains the sources.
+        subdir: 'components/Mcal/Eth'
+        # AUTOSAR generated headers abort preprocessing when the module
+        # version check fails, so switch that check off for the analysis.
+        defines:
+          - 'DISABLE_MCAL_INTERMODULE_ASR_CHECK'
+        # Where the shared MCAL headers live (Eth_GeneralTypes.h etc.).
+        includes:
+          - 'components/Mcal/Common'

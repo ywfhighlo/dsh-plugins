@@ -16,8 +16,11 @@ export const inject = ["commands"];
 
 export const Config = Schema.object({
   root: Schema.string().default("").description("Default directory to check when the caller passes none (absolute path)"),
+  subdir: Schema.string().default("").description("Directory below the project root that actually holds the code (e.g. 'components/Mcal/Eth'); the project root is used when it does not exist"),
   cppcheck: Schema.string().default("vendor/cppcheck/cppcheck.exe").description("cppcheck executable: absolute path, or a path relative to this plugin folder (default bundles it in vendor/), or a bare command name found on PATH"),
   cppcheckArgs: Schema.string().default("").description("Extra cppcheck arguments (e.g. --std=c11 --platform=arm32)"),
+  defines: Schema.array(Schema.string()).default([]).description("Preprocessor defines passed to cppcheck (e.g. DISABLE_MCAL_INTERMODULE_ASR_CHECK)"),
+  includes: Schema.array(Schema.string()).default([]).description("Include directories for cppcheck, absolute or relative to the project root (e.g. components/Mcal/Common)"),
   exclude: Schema.array(Schema.string()).default([".git", "node_modules", "build", "dist", "out", ".dsh", ".agents"]).description("Directory names skipped by the built-in scanner"),
   maxFindings: Schema.number().default(500).description("Cap on reported findings per run"),
 });
@@ -163,12 +166,18 @@ function resolveCppcheck(configured) {
   return { cmd: value };
 }
 
-async function cppcheckScan(root, cfg, signal) {
+async function cppcheckScan(root, cfg, projectRoot, signal) {
   const extra = cfg.cppcheckArgs ? cfg.cppcheckArgs.split(/\s+/).filter(Boolean) : [];
+  const defines = (cfg.defines ?? []).map((d) => `-D${d}`);
+  const includes = (cfg.includes ?? []).map((dir) => {
+    const value = String(dir);
+    return `-I${path.isAbsolute(value) ? value : path.resolve(projectRoot ?? root, value)}`;
+  });
   const args = [
     "--quiet", "--enable=style",
     "--addon=misra",
     "--template={file}:{line}:{id}:{message}",
+    ...defines, ...includes,
     ...extra, root,
   ];
   const r = await runCommand(resolveCppcheck(cfg.cppcheck).cmd, args, { timeoutMs: 300000 });
@@ -201,7 +210,7 @@ function summarize(result) {
 }
 
 class MisraCheckService extends TypertRemoteService {
-  static inject = ["commands"];
+  static inject = ["commands", "agents", "sessions", "workingDirectory"];
   constructor(ctx, config = {}) {
     super(ctx, NAMESPACE);
     this.config = config;
@@ -210,7 +219,7 @@ class MisraCheckService extends TypertRemoteService {
       description: "Run a MISRA C check (cppcheck + MISRA addon, or the built-in fallback rules)",
       handler: async (invocation) => {
         const agent = invocation?.agent;
-        const cwd = agent?.session?.header?.cwd ?? process.cwd();
+        const cwd = agent?.session?.header?.cwd ?? this.resolveDefaultDir().dir;
         const line = String(invocation?.line ?? "");
         const target = line.replace(/^\s*\/?misra\s*/i, "").trim();
         const result = await this.runCheck(target || cwd);
@@ -218,6 +227,52 @@ class MisraCheckService extends TypertRemoteService {
       },
     });
     ctx.effect(() => { disposeCommand(); }, "@local/dsh-misra-checker: /misra command");
+  }
+
+  /**
+   * Resolve the project root: an explicit `root` config wins, then the working
+   * directory of a live session (newest first, which is the project the user is
+   * working in), then the newest known session, then the Host's default.
+   */
+  resolveProjectRoot() {
+    const configured = String(this.config.root || "").trim();
+    if (configured) return { dir: path.resolve(configured), source: "config" };
+    const agents = this.ctx.agents?.list?.() ?? [];
+    const sessions = this.ctx.sessions?.list?.() ?? [];
+    const newest = (a, b) => (b?.session?.header?.createdAt ?? b?.header?.createdAt ?? 0)
+      - (a?.session?.header?.createdAt ?? a?.header?.createdAt ?? 0);
+    const agentDirs = [...agents].sort(newest)
+      .map((a) => a?.session?.header?.cwd)
+      .filter((dir) => typeof dir === "string" && dir !== "");
+    if (agentDirs.length > 0) return { dir: agentDirs[0], source: "session" };
+    const sessionDirs = [...sessions].sort((a, b) => (b?.header?.createdAt ?? 0) - (a?.header?.createdAt ?? 0))
+      .map((s) => s?.header?.cwd)
+      .filter((dir) => typeof dir === "string" && dir !== "");
+    if (sessionDirs.length > 0) return { dir: sessionDirs[0], source: "session" };
+    const fallback = this.ctx.workingDirectory?.defaultDirectory;
+    return { dir: fallback ? String(fallback) : process.cwd(), source: "host" };
+  }
+
+  /**
+   * The directory the checker scans: the project root narrowed to the
+   * configured `subdir` when it exists, so a whole project is never scanned.
+   */
+  resolveDefaultDir() {
+    const root = this.resolveProjectRoot();
+    return this.narrowToSubdir(root.dir, root.source);
+  }
+
+  /** Narrow a project root to the configured sub-directory when it exists. */
+  narrowToSubdir(root, source) {
+    const subdir = String(this.config.subdir || "").trim().replace(/[\\/]+$/, "");
+    if (subdir === "") return { dir: root, source };
+    const candidate = path.resolve(root, subdir);
+    try {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory()) {
+        return { dir: candidate, source: `${source}+subdir` };
+      }
+    } catch {}
+    return { dir: root, source };
   }
 
   formatText(result) {
@@ -232,15 +287,24 @@ class MisraCheckService extends TypertRemoteService {
 
   async runCheck(targetDir) {
     const cfg = this.config;
+    const project = this.resolveProjectRoot();
     let root = String(targetDir || cfg.root || "").trim();
-    if (!root) throw new Error("no directory to check: pass a path or set the plugin config 'root'");
+    if (!root) root = this.resolveDefaultDir().dir;
     root = path.resolve(root);
     const stat = await fsp.stat(root).catch(() => undefined);
     if (!stat || !stat.isDirectory()) throw new Error(`not a directory: ${root}`);
 
-    const cpp = await cppcheckScan(root, cfg);
+    const cpp = await cppcheckScan(root, cfg, project.dir);
     if (!cpp.unavailable) {
-      return { root, engine: cpp.engine, filesScanned: undefined, findings: cpp.findings, ...summarize(cpp) };
+      const capped = cpp.findings.length >= cfg.maxFindings;
+      return {
+        root,
+        engine: cpp.engine,
+        filesScanned: undefined,
+        findings: cpp.findings,
+        note: capped ? `showing the first ${cfg.maxFindings} findings (raise the 'maxFindings' config for more)` : cpp.note,
+        ...summarize(cpp),
+      };
     }
     const builtin = await builtinScan(root, cfg);
     return {
@@ -259,9 +323,20 @@ class MisraCheckService extends TypertRemoteService {
     return { cppcheck: r.error ? false : true, version: r.error ? undefined : version };
   }
 
-  async check(a) {
-    const req = typeof a === "string" ? { path: a } : (a || {});
-    return this.runCheck(req.path || req.cwd || req.root);
+  /**
+   * Remote method. The gateway maps the JSON field named after the parameter,
+   * so the client must send `{ path: "<dir>" }`; an empty path falls back to
+   * the resolved default directory (the current project).
+   */
+  async check(path) {
+    const target = typeof path === "string" ? path.trim() : "";
+    return this.runCheck(target || this.resolveDefaultDir().dir);
+  }
+
+  /** Remote method: the directory the checker defaults to, with its origin. */
+  async defaults() {
+    const resolved = this.resolveDefaultDir();
+    return { dir: resolved.dir, source: resolved.source };
   }
 }
 
@@ -278,6 +353,7 @@ function exposeMethod(cls, method, exportName) {
   });
 }
 exposeMethod(MisraCheckService, "check");
+exposeMethod(MisraCheckService, "defaults");
 exposeMethod(MisraCheckService, "probe");
 
 export default MisraCheckService;

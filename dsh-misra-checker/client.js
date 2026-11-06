@@ -31,6 +31,8 @@ window.__ModuleLoader__.load({
       noFindings: "未发现问题。",
       empty: "没有可显示的发现。",
       browse: "浏览…",
+      defaultHint: "默认目录：",
+      fromSession: "当前项目",
       failed: "检查失败",
       open: "展开",
       collapsed: "收起",
@@ -49,6 +51,8 @@ window.__ModuleLoader__.load({
       noFindings: "No findings.",
       empty: "Nothing to show.",
       browse: "Browse…",
+      defaultHint: "Default directory:",
+      fromSession: "current project",
       failed: "Check failed",
       open: "Show",
       collapsed: "Hide",
@@ -92,6 +96,18 @@ window.__ModuleLoader__.load({
       const [result, setResult] = useState(null);
       const [error, setError] = useState(null);
       const [open, setOpen] = useState(true);
+      const [defaultDir, setDefaultDir] = useState(null);
+
+      // Ask the Host which directory the current project uses, and prefill it.
+      useEffect(() => {
+        let alive = true;
+        callRpc("defaults", {}).then((d) => {
+          if (!alive || !d || typeof d.dir !== "string" || d.dir === "") return;
+          setDefaultDir(d);
+          setDir((current) => (current && current.trim() !== "" ? current : d.dir));
+        }).catch(() => {});
+        return () => { alive = false; };
+      }, []);
 
       const run = async () => {
         const target = dir.trim();
@@ -130,6 +146,8 @@ window.__ModuleLoader__.load({
           }),
           pickDirectory ? h("button", { className: "msr-btn", disabled: running, onClick: browse, title: t("browse") }, t("browse")) : null,
           h("button", { className: "msr-btn", disabled: running, onClick: run }, running ? t("running") : t("run"))),
+        defaultDir ? h("div", { className: "msr-meta" },
+          t("defaultHint") + " " + defaultDir.dir + (defaultDir.source === "session" ? " (" + t("fromSession") + ")" : "")) : null,
         result ? h("div", { className: "msr-meta" },
           (result.engine === "cppcheck" ? t("engineCppcheck") : t("engineBuiltin")) +
           " · " + result.total + " " + t("findings") + " (" + result.errors + " " + t("errors") + ", " + result.warnings + " " + t("warnings") + ")" +
