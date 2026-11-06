@@ -1,0 +1,687 @@
+{
+  "standard": "MISRA C:2012",
+  "source": "https://www.cnblogs.com/xywml/p/18742061",
+  "count": 136,
+  "rules": {
+    "1.1": {
+      "severity": "Mandatory",
+      "text": "The program shall not violate the standard C syntax and constraints, nor exceed the implementation's translation limits.",
+      "zh": "程序不得违反标准C语法和约束，不应超出实现的翻译限制。"
+    },
+    "1.2": {
+      "severity": "Mandatory",
+      "text": "Language extensions shall not be used.",
+      "zh": "避免语言扩展"
+    },
+    "1.3": {
+      "severity": "Mandatory",
+      "text": "Undefined and critical unspecified behaviour shall not occur.",
+      "zh": "不应出现未定义或关键的未指定行为。"
+    },
+    "2.1": {
+      "severity": "Mandatory",
+      "text": "A project shall not contain unreachable code.",
+      "zh": "不可达代码"
+    },
+    "2.2": {
+      "severity": "Mandatory",
+      "text": "There shall be no dead code.",
+      "zh": "死代码"
+    },
+    "2.3": {
+      "severity": "Advisory",
+      "text": "A project should not contain unused type declarations",
+      "zh": "建议项目不应包含未使用类型声明。"
+    },
+    "2.4": {
+      "severity": "Advisory",
+      "text": "A project should not contain unused tag declarations",
+      "zh": "建议项目不应包含未使用标记声明。"
+    },
+    "2.5": {
+      "severity": "Advisory",
+      "text": "A project should not contain unused macro declarations",
+      "zh": "建议项目不应包含未使用宏定义声明。"
+    },
+    "2.6": {
+      "severity": "Advisory",
+      "text": "A function should not contain unused label declarations",
+      "zh": "建议函数不应包含未使用标签声明。"
+    },
+    "2.7": {
+      "severity": "Advisory",
+      "text": "There should be no unused parameters in functions",
+      "zh": "建议函数中, 不应有未使用参数。"
+    },
+    "3.1": {
+      "severity": "Mandatory",
+      "text": "The character sequences `/*` and `//` shall not be used within a comment",
+      "zh": "字符序列 `/*` 和 `//` 不应在注释中使用。"
+    },
+    "3.2": {
+      "severity": "Mandatory",
+      "text": "Line-splicing shall not be used in `//` comments",
+      "zh": "不得在注释`//`中使用续行符()。"
+    },
+    "4.1": {
+      "severity": "Mandatory",
+      "text": "Octal and hexadecimal escape sequences shall be terminated",
+      "zh": "8进制和16进制高级转义序列应终止。"
+    },
+    "4.2": {
+      "severity": "Advisory",
+      "text": "Trigraphs should not be used",
+      "zh": "建议三字母词不应使用。"
+    },
+    "5.1": {
+      "severity": "Mandatory",
+      "text": "External identifiers shall be distinct",
+      "zh": "外部标识符应该不同。"
+    },
+    "5.2": {
+      "severity": "Mandatory",
+      "text": "Identifiers declared in the same scope and name space shall be distinct",
+      "zh": "声明在同一作用域和命名空间的标识符, 应该是不同的。"
+    },
+    "5.3": {
+      "severity": "Mandatory",
+      "text": "An identifier declared in an inner scope shall not hide an identifier declared in an outer scope",
+      "zh": "在内部作用域中声明的标识符, 不应隐藏外部作用域中声明的标识符。"
+    },
+    "5.4": {
+      "severity": "Mandatory",
+      "text": "Macro identifiers shall be distinct",
+      "zh": "宏定义标识符应该不同。"
+    },
+    "5.5": {
+      "severity": "Mandatory",
+      "text": "Identifiers shall be distinct from macro names",
+      "zh": "标识符应与宏定义名称不同。"
+    },
+    "5.6": {
+      "severity": "Mandatory",
+      "text": "A typedef name shall be a unique identifier",
+      "zh": "typedef类型名应该是独有的标识符。"
+    },
+    "5.7": {
+      "severity": "Mandatory",
+      "text": "A tag name shall be a unique identifier",
+      "zh": "标记名应该是独有的标识符。"
+    },
+    "5.8": {
+      "severity": "Mandatory",
+      "text": "Identifiers that define objects or functions with external linkage shall be unique",
+      "zh": "使用外部链定义对象或函数的标识符应该唯一。"
+    },
+    "5.9": {
+      "severity": "Advisory",
+      "text": "Identifiers that define objects or functions with internal linkage should be unique",
+      "zh": "建议使用内部链接定义的对象或函数应该唯一。"
+    },
+    "6.1": {
+      "severity": "Mandatory",
+      "text": "Bit-fields shall only be declared with an appropriate type",
+      "zh": "位域只能用适当的类型声明。"
+    },
+    "6.2": {
+      "severity": "Mandatory",
+      "text": "Single-bit named bit fields shall not be of a signed type",
+      "zh": "单比特命名位字段不应为带符号类型。"
+    },
+    "7.1": {
+      "severity": "Mandatory",
+      "text": "Octal constants shall not be used",
+      "zh": "不应使用8进制常数。"
+    },
+    "7.2": {
+      "severity": "Mandatory",
+      "text": "A \"u\" or \"U\" suffix shall be applied to all integer constants that are represented in an unsigned type",
+      "zh": "\"u\"或\"U\"后缀应该应用到整型常量，代表无符号类型。"
+    },
+    "7.3": {
+      "severity": "Mandatory",
+      "text": "The lowercase character 'l' shall not be used in a literal suffix",
+      "zh": "小写字母'l'不应用于文字后缀。"
+    },
+    "7.4": {
+      "severity": "Mandatory",
+      "text": "A string literal shall not be assigned to an object unless the object's type is “pointer to const-qualified char”",
+      "zh": "字符串文字不应赋值给对象，除非对象的类型是“指向常量限定字符的指针”。"
+    },
+    "8.1": {
+      "severity": "Mandatory",
+      "text": "Types shall be explicitly specified",
+      "zh": "类型应明确指定。"
+    },
+    "8.2": {
+      "severity": "Mandatory",
+      "text": "Function types shall be in prototype form with named parameters",
+      "zh": "函数类型应该为带命名参数的原型。"
+    },
+    "8.3": {
+      "severity": "Mandatory",
+      "text": "All declarations of an object or function shall use the same names and type qualifiers",
+      "zh": "所有对象或函数的声明应使用相同的名字或类型限定符。"
+    },
+    "8.4": {
+      "severity": "Mandatory",
+      "text": "A compatible declaration shall be visible when an object or function with external linkage is defined",
+      "zh": "当对象或函数由外部链接定义时, 兼容声明应当是可见的。"
+    },
+    "8.5": {
+      "severity": "Mandatory",
+      "text": "An external object or function shall be declared once in one and only one file",
+      "zh": "外部对象或函数应在一个且仅在一个文件中声明。"
+    },
+    "8.6": {
+      "severity": "Mandatory",
+      "text": "An identifier with external linkage shall have exactly one external definition",
+      "zh": "外部链接的标识符应有一个外部定义。"
+    },
+    "8.7": {
+      "severity": "Advisory",
+      "text": "Functions and objects should not be defined with external linkage if they are referenced in only one translation unit",
+      "zh": "如果函数和对象仅在一个翻译单元中引用，则不应由外部链接定义。"
+    },
+    "8.8": {
+      "severity": "Mandatory",
+      "text": "The static storage class specifier shall be used in all declarations of objects and functions that have internal linkage",
+      "zh": "静态存储类说明符 应该用于所有内部链接的对象和函数的声明。"
+    },
+    "8.9": {
+      "severity": "Advisory",
+      "text": "An object should be defined at block scope if its identifier only appears in a single function",
+      "zh": "如果对象的标识符仅出现在单个函数中，则应在块范围内定义该对象。"
+    },
+    "8.10": {
+      "severity": "Mandatory",
+      "text": "An inline function shall be declared with the static storage class",
+      "zh": "内联函数应与静态存储类一同声明。"
+    },
+    "8.11": {
+      "severity": "Advisory",
+      "text": "When an array with external linkage is declared, its size should be explicitly specified",
+      "zh": "当外部链接的数组声明时，它的尺寸应明确指定。"
+    },
+    "8.12": {
+      "severity": "Mandatory",
+      "text": "Within an enumerator list, the value of an implicitly specified enumeration constant shall be unique",
+      "zh": "在枚举列表中, 隐式指定枚举常量值是唯一的。"
+    },
+    "8.13": {
+      "severity": "Advisory",
+      "text": "A pointer should point to a const-qualified type whenever possible",
+      "zh": "指针应尽可能指向常量限定类型。"
+    },
+    "8.14": {
+      "severity": "Mandatory",
+      "text": "The restrict type qualifier shall not be used",
+      "zh": "restrict类型限定符不应使用。"
+    },
+    "9.1": {
+      "severity": "Mandatory",
+      "text": "The value of an object with automatic storage duration shall not be read before it has been set",
+      "zh": "聚合体或联合体的初值应该包含在大括号中。"
+    },
+    "9.2": {
+      "severity": "Mandatory",
+      "text": "The initializer for an aggregate or union shall be enclosed in braces",
+      "zh": "聚合体或联合体的初值应该包含在大括号中。"
+    },
+    "9.3": {
+      "severity": "Mandatory",
+      "text": "Arrays shall not be partially initialized",
+      "zh": "数组不应部分初始化。"
+    },
+    "9.4": {
+      "severity": "Mandatory",
+      "text": "An element of an object shall not be initialised more than once",
+      "zh": "对象的元素不应初始化超过一次。"
+    },
+    "9.5": {
+      "severity": "Mandatory",
+      "text": "Where designated initialisers are used to initialize an array object the size of the array shall be specified explicitly",
+      "zh": "如果指定的初始化器用于初始化数组对象，那么应明确指定数组的大小。"
+    },
+    "10.1": {
+      "severity": "Mandatory",
+      "text": "Operands shall not be of an inappropriate essential type",
+      "zh": "操作数不应具有不恰当的基本类型。"
+    },
+    "10.2": {
+      "severity": "Advisory",
+      "text": "Expressions of essentially character type shall not be used inappropriately in addition and subtraction operations",
+      "zh": "本质上为字符类型的表达式，不应用在不正确的加法和减法运算中。"
+    },
+    "10.3": {
+      "severity": "Mandatory",
+      "text": "The value of an expression shall not be assigned to an object with a narrower essential type or of a different essential type category",
+      "zh": "表达式的值不应赋值给本质类型较窄 或 不同的基本类型 的对象。"
+    },
+    "10.4": {
+      "severity": "Mandatory",
+      "text": "Both operands of an operator in which the usual arithmetic conversions are performed shall have the same essential type category",
+      "zh": "通常的算术转换时的运算符的2个操作数，应具有相同的基本类型类别。"
+    },
+    "10.5": {
+      "severity": "Advisory",
+      "text": "The value of an expression should not be cast to an inappropriate essential type",
+      "zh": "建议表达式的值不应转型为不恰当的本质类型。"
+    },
+    "10.6": {
+      "severity": "Mandatory",
+      "text": "The value of a composite expression shall not be assigned to an object with wider essential type",
+      "zh": "复合表达式的值不应赋值给具有更宽基本类型的对象。"
+    },
+    "10.7": {
+      "severity": "Mandatory",
+      "text": "If a composite expression is used as one operand of an operator in which the usual arithmetic conversions are performed then the other operand shall not have wider essential type",
+      "zh": "如果一个复合表达式被用作执行常用算术转换的运算符的一个操作数，另一个运算数不应具有更宽的本质类型。"
+    },
+    "10.8": {
+      "severity": "Mandatory",
+      "text": "The value of a composite expression shall not be cast to a different essential type category or a wider essential type",
+      "zh": "复合表达式的值不应转型为不同本质类型类别或一更宽的本质类型。"
+    },
+    "11.1": {
+      "severity": "Mandatory",
+      "text": "Conversions shall not be performed between a pointer to a function and any other type",
+      "zh": "转换不应在函数指针和其他类型指针之间进行。"
+    },
+    "11.2": {
+      "severity": "Mandatory",
+      "text": "Conversions shall not be performed between a pointer to incomplete and any other type",
+      "zh": "转换不应在不完整类型和其他类型指针之间进行。"
+    },
+    "11.3": {
+      "severity": "Mandatory",
+      "text": "A cast shall not be performed between a pointer to object type and a pointer to a different object type",
+      "zh": "转型不应在指向不同对象类型的指针之间进行。"
+    },
+    "11.4": {
+      "severity": "Advisory",
+      "text": "A conversion should not be performed between a pointer to object and an integer type",
+      "zh": "建议转型不应在指向对象的指针和整型之间进行。"
+    },
+    "11.5": {
+      "severity": "Advisory",
+      "text": "A conversion should not be performed from pointer to void into pointer to object",
+      "zh": "建议不应将指向void的指针转型为指向对象的指针。"
+    },
+    "11.6": {
+      "severity": "Mandatory",
+      "text": "A cast shall not be performed between pointer to void and an arithmetic type",
+      "zh": "转型不应在void指针和算术类型之间进行。"
+    },
+    "11.7": {
+      "severity": "Mandatory",
+      "text": "A cast shall not be performed between pointer to object and a non-integer arithmetic type",
+      "zh": "转型不应在指向对象的指针和非整型算术类型之间进行。"
+    },
+    "11.8": {
+      "severity": "Mandatory",
+      "text": "A cast shall not remove any const or volatile qualification from the type pointed to by a pointer",
+      "zh": "转型不应移除来自指针指向的类型的任何const 或 volatile限定符。"
+    },
+    "11.9": {
+      "severity": "Mandatory",
+      "text": "The macro NULL shall be the only permitted form of integer null pointer constant",
+      "zh": "NULL宏是唯一允许的整型空指针常量的形式。"
+    },
+    "12.1": {
+      "severity": "Advisory",
+      "text": "The precedence of operators within expressions should be made explicit",
+      "zh": "应明确表达式中运算符的优先级。"
+    },
+    "12.2": {
+      "severity": "Mandatory",
+      "text": "The right hand operand of a shift operator shall lie in the range zero to one less than the width in bits of the essential type of the left hand operand",
+      "zh": "移位运算符的右手操作数应在0~1之间, 比左操作数的基本类型的位宽小。"
+    },
+    "12.3": {
+      "severity": "Advisory",
+      "text": "The comma operator should not be used",
+      "zh": "建议逗号操作符不应使用。"
+    },
+    "12.4": {
+      "severity": "Advisory",
+      "text": "Evaluation of constant expressions should not lead to unsigned integer wrap-around",
+      "zh": "建议常量表达式的值计算不应导致无符号整型环绕(溢出)。"
+    },
+    "13.1": {
+      "severity": "Mandatory",
+      "text": "Initialiser lists shall not contain persistent side effects",
+      "zh": "初始化列表不应包含持久副作用。"
+    },
+    "13.2": {
+      "severity": "Mandatory",
+      "text": "The value of an expression and its persistent side effects shall be the same under all permitted evaluation orders",
+      "zh": "表达式的值和它的持久副作用, 应在所有允许的计算顺序情况下相同。"
+    },
+    "13.3": {
+      "severity": "Advisory",
+      "text": "A full expression containing an increment (++) or decrement (--) operator should have no other potential side effects other than that caused by the increment or decrement operator",
+      "zh": "建议。包含自增或自减运算符的完整表达式，除了由自增或自减运算符引起的副作用外，不应有其他潜在的副作用。"
+    },
+    "13.4": {
+      "severity": "Advisory",
+      "text": "The result of an assignment operator should not be used",
+      "zh": "建议赋值运算符的结果不应使用。"
+    },
+    "13.5": {
+      "severity": "Mandatory",
+      "text": "The right hand operand of a logical && or || operator shall not contain persistent side effects",
+      "zh": "逻辑运算符 `&&` 或 `||` 运算符不应包含持久副作用。"
+    },
+    "13.6": {
+      "severity": "Mandatory",
+      "text": "The operand of the sizeof operator shall not contain any expression which has potential side effects",
+      "zh": "循环计数器不应有实质上的浮点类型。"
+    },
+    "14.1": {
+      "severity": "Advisory",
+      "text": "A loop counter shall not have essentially floating type",
+      "zh": "循环计数器不应有实质上的浮点类型。"
+    },
+    "14.2": {
+      "severity": "Mandatory",
+      "text": "A for loop shall be well-formed",
+      "zh": "一个循环应有良好的结构。"
+    },
+    "14.3": {
+      "severity": "Mandatory",
+      "text": "Controlling expressions shall not be invariant",
+      "zh": "控制表达式不应是不变的。"
+    },
+    "14.4": {
+      "severity": "Mandatory",
+      "text": "The controlling expression of an if statement and the controlling expression of an iteration-statement shall have essentially Boolean type",
+      "zh": "if语句的控制表达式和迭代语句的控制表达式, 应具有本质上布尔类型。"
+    },
+    "15.1": {
+      "severity": "Advisory",
+      "text": "The goto statement should not be used",
+      "zh": "建议goto语句不应使用。"
+    },
+    "15.2": {
+      "severity": "Mandatory",
+      "text": "The goto statement shall jump to a label declared later in the same function",
+      "zh": "goto语句应跳转到同一函数内、goto语句后声明的标签。"
+    },
+    "15.3": {
+      "severity": "Mandatory",
+      "text": "Any label referenced by a goto statement shall be declared in the same block, or in any block enclosing the goto statement",
+      "zh": "goto语句引用的任何标签，应在相同块中声明，或者任何块中声明围住goto语句。"
+    },
+    "15.4": {
+      "severity": "Advisory",
+      "text": "There should be no more than one break or goto statement used to terminate any iteration statement",
+      "zh": "建议不应有超过1个break或goto语句终止任意迭代语句。"
+    },
+    "15.5": {
+      "severity": "Advisory",
+      "text": "A function should have a single point of exit at the end",
+      "zh": "建议函数应在末尾有单一退出点。"
+    },
+    "15.6": {
+      "severity": "Mandatory",
+      "text": "The body of an iteration-statement or a selection-statement shall be a compound statement",
+      "zh": "迭代语句或选择语句的本体应为复合语句。"
+    },
+    "15.7": {
+      "severity": "Mandatory",
+      "text": "All if . . else if constructs shall be terminated with an else statement",
+      "zh": "所有if..else，都应该以else终止。"
+    },
+    "16.1": {
+      "severity": "Mandatory",
+      "text": "All switch statements shall be well-formed",
+      "zh": "所有switch语句应具有良好形式。"
+    },
+    "16.2": {
+      "severity": "Mandatory",
+      "text": "A switch label shall only be used when the most closely-enclosing compound statement is the body of a switch statement",
+      "zh": "switch label只应用在封闭的复合语句是switch语句的主体的时候。"
+    },
+    "16.3": {
+      "severity": "Mandatory",
+      "text": "An unconditional break statement shall terminate every switch-clause",
+      "zh": "无条件的break语句应终止每个子句。"
+    },
+    "16.4": {
+      "severity": "Mandatory",
+      "text": "Every switch statement shall have a default label",
+      "zh": "每个switch语句应有default标签。"
+    },
+    "16.5": {
+      "severity": "Mandatory",
+      "text": "A default label shall appear as either the first or the last switch label of a switch statement",
+      "zh": "默认标签应作为第一个或最后一个switch标签出现。"
+    },
+    "16.6": {
+      "severity": "Mandatory",
+      "text": "Every switch statement shall have at least two switch-clauses",
+      "zh": "每个switch语句应有至少2个switch子句。"
+    },
+    "16.7": {
+      "severity": "Mandatory",
+      "text": "A switch-expression shall not have essentially Boolean type",
+      "zh": "switch表达式不应具有本质上布尔类型。"
+    },
+    "17.1": {
+      "severity": "Mandatory",
+      "text": "The features of `<stdarg.h>` shall not be used",
+      "zh": "`<stdarg.h>`的功能不应使用。"
+    },
+    "17.2": {
+      "severity": "Mandatory",
+      "text": "Functions shall not call themselves, either directly or indirectly",
+      "zh": "函数不应直接或间接地调用自己。"
+    },
+    "17.3": {
+      "severity": "Mandatory",
+      "text": "A function shall not be declared implicitly",
+      "zh": "函数不应被隐式声明。"
+    },
+    "17.4": {
+      "severity": "Mandatory",
+      "text": "All exit paths from a function with non-void return type shall have an explicit return statement with an expression",
+      "zh": "非 void 返回类型函数的所有出口路径都应包含带表达式的显式 return 语句。"
+    },
+    "17.5": {
+      "severity": "Advisory",
+      "text": "The function argument corresponding to a parameter declared to have an array type shall have an appropriate number of elements",
+      "zh": "建议与被声明为拥有数组类型的参数对应的函数参数，应具有适当的元素数量。"
+    },
+    "17.6": {
+      "severity": "Mandatory",
+      "text": "The declaration of an array parameter shall not contain the static keyword between the `[ ]`",
+      "zh": "非void返回类型的函数，必须返回值被使用。"
+    },
+    "17.7": {
+      "severity": "Mandatory",
+      "text": "The value returned by a function having non-void return type shall be used",
+      "zh": "非void返回类型的函数，必须返回值被使用。"
+    },
+    "17.8": {
+      "severity": "Advisory",
+      "text": "A function parameter should not be modified",
+      "zh": "建议函数参数不应修改。"
+    },
+    "18.1": {
+      "severity": "Mandatory",
+      "text": "A pointer resulting from arithmetic on a pointer operand shall address an element of the same array as that pointer operand",
+      "zh": "指针操作数的算术运算产生的指针, 应寻址与该指针操作数相同的数组元素。"
+    },
+    "18.2": {
+      "severity": "Mandatory",
+      "text": "Subtraction between pointers shall only be applied to pointers that address elements of the same array",
+      "zh": "指针之间的减法, 应当仅仅用于寻址相同数组的指针。"
+    },
+    "18.3": {
+      "severity": "Mandatory",
+      "text": "The relational operators >, >=, < and <= shall not be applied to objects of pointer type except where they point into the same object",
+      "zh": "关系运算符 >, >=, <, <=，不应用于对象的指针类型，除了它们指向相同对象。"
+    },
+    "18.4": {
+      "severity": "Advisory",
+      "text": "The +, -, += and -= operators should not be applied to an expression of pointer type",
+      "zh": "建议+，-，+=，-=运算符不应用于指针类型的表达式。"
+    },
+    "18.5": {
+      "severity": "Advisory",
+      "text": "Declarations should contain no more than two levels of pointer nesting",
+      "zh": "建议声明不应包含超过2级指针嵌套。"
+    },
+    "18.6": {
+      "severity": "Mandatory",
+      "text": "The address of an object with automatic storage shall not be copied to another object that persists after the first object has ceased to exist",
+      "zh": "具有自动存储的对象地址, 不应拷贝到 在第一个对象不存在之后, 另一个存在的对象。"
+    },
+    "18.7": {
+      "severity": "Mandatory",
+      "text": "Flexible array members shall not be declared",
+      "zh": "灵活的数组成员不应声明。"
+    },
+    "18.8": {
+      "severity": "Mandatory",
+      "text": "Variable-length array types shall not be used",
+      "zh": "可变长度数组类型不应使用。"
+    },
+    "19.1": {
+      "severity": "Mandatory",
+      "text": "An object shall not be assigned or copied to an overlapping object",
+      "zh": "不得将对象赋值或复制到与其重叠的对象。"
+    },
+    "19.2": {
+      "severity": "Advisory",
+      "text": "The union keyword should not be used",
+      "zh": "建议union关键字不应使用。"
+    },
+    "20.1": {
+      "severity": "Mandatory",
+      "text": "All #include directives shall precede any other content in the translation unit.",
+      "zh": "#include 必须位于文件最前面，不能出现在语句之后。"
+    },
+    "20.3": {
+      "severity": "Mandatory",
+      "text": "The #include directive shall be followed by either a `<filename>` or \"filename\" sequence",
+      "zh": "`#include`指令应跟着`<文件名>`或`\"文件名\"`序列。"
+    },
+    "20.4": {
+      "severity": "Mandatory",
+      "text": "A macro shall not be defined with the same name as a keyword",
+      "zh": "宏定义不应使用相同的名称，作为关键字。"
+    },
+    "20.5": {
+      "severity": "Advisory",
+      "text": "#undef should not be used",
+      "zh": "建议#undef不应使用。"
+    },
+    "20.6": {
+      "severity": "Mandatory",
+      "text": "Tokens that look like a preprocessing directive shall not occur within a macro argument",
+      "zh": "看起来像预处理指令的令牌, 不应出现在宏参数中。"
+    },
+    "20.7": {
+      "severity": "Mandatory",
+      "text": "Expressions resulting from the expansion of macro parameters shall be enclosed in parentheses",
+      "zh": "宏参数扩展产生的表达式, 应包含在括号中。"
+    },
+    "20.8": {
+      "severity": "Mandatory",
+      "text": "The controlling expression of a #if or #elif preprocessing directive shall evaluate to 0 or 1",
+      "zh": "#if或#elif预处理指令的控制表达式, 应该评估为0或1。"
+    },
+    "20.9": {
+      "severity": "Mandatory",
+      "text": "The controlling expression of a #if or #elif directive shall only contain identifiers that are defined macros or C keywords.",
+      "zh": "#if/#elif 的控制表达式只能使用已定义的宏或 C 关键字。"
+    },
+    "20.10": {
+      "severity": "Mandatory",
+      "text": "The # operator shall not be used.",
+      "zh": "不得使用 # 运算符。"
+    },
+    "20.11": {
+      "severity": "Mandatory",
+      "text": "A macro parameter shall not be used with both the # and ## operators.",
+      "zh": "宏参数不得同时与 # 和 ## 运算符一起使用。"
+    },
+    "20.12": {
+      "severity": "Mandatory",
+      "text": "The ## operator shall not be used with a macro parameter that is also used in another macro invocation.",
+      "zh": "## 运算符不得用于在其他宏调用中同样出现的宏参数。"
+    },
+    "20.13": {
+      "severity": "Mandatory",
+      "text": "Preprocessor directives that are not defined shall not be used.",
+      "zh": "不得使用未定义的预处理指令。"
+    },
+    "20.14": {
+      "severity": "Mandatory",
+      "text": "All #if, #ifdef and #ifndef directives shall have a matching #endif directive in the same file.",
+      "zh": "#if/#ifdef/#ifndef 必须在同一文件内与 #endif 正确配对。"
+    },
+    "21.1": {
+      "severity": "Mandatory",
+      "text": "Reserved identifiers, keywords and macro names shall not be used.",
+      "zh": "不得使用保留标识符、关键字与宏名。"
+    },
+    "21.2": {
+      "severity": "Mandatory",
+      "text": "A reserved identifier shall not be declared or defined.",
+      "zh": "不得声明或定义保留标识符。"
+    },
+    "21.3": {
+      "severity": "Mandatory",
+      "text": "The memory allocation and deallocation functions of <stdlib.h> shall not be used.",
+      "zh": "不得使用 <stdlib.h> 的内存分配与释放函数。"
+    },
+    "21.4": {
+      "severity": "Mandatory",
+      "text": "The <setjmp.h> header shall not be included.",
+      "zh": "不得包含 <setjmp.h> 头文件。"
+    },
+    "21.5": {
+      "severity": "Mandatory",
+      "text": "The <signal.h> header shall not be included.",
+      "zh": "不得包含 <signal.h> 头文件。"
+    },
+    "21.6": {
+      "severity": "Mandatory",
+      "text": "The standard library input/output functions shall not be used.",
+      "zh": "不得使用标准库输入/输出函数。"
+    },
+    "21.7": {
+      "severity": "Mandatory",
+      "text": "The atof, atoi, atol and atoll functions of <stdlib.h> shall not be used.",
+      "zh": "不得使用 <stdlib.h> 的 atof/atoi/atol/atoll 函数。"
+    },
+    "21.8": {
+      "severity": "Mandatory",
+      "text": "The abort, exit and getenv functions of <stdlib.h> shall not be used.",
+      "zh": "不得使用 <stdlib.h> 的 abort/exit/getenv 函数。"
+    },
+    "21.9": {
+      "severity": "Mandatory",
+      "text": "The bsearch and qsort functions of <stdlib.h> shall not be used.",
+      "zh": "不得使用 <stdlib.h> 的 bsearch/qsort 函数。"
+    },
+    "21.10": {
+      "severity": "Mandatory",
+      "text": "The <time.h> header shall not be included.",
+      "zh": "不得包含 <time.h> 头文件。"
+    },
+    "21.11": {
+      "severity": "Mandatory",
+      "text": "The <tgmath.h> header shall not be included.",
+      "zh": "不得包含 <tgmath.h> 头文件。"
+    },
+    "21.12": {
+      "severity": "Mandatory",
+      "text": "The fenv facilities of <fenv.h> shall not be used.",
+      "zh": "不得使用 <fenv.h> 的浮点环境设施。"
+    }
+  }
+}

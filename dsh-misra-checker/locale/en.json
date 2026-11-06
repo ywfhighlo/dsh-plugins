@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "MISRA C Checker",
-    "description": "Run a MISRA C check on a project directory from the composer: cppcheck with the MISRA addon when available, otherwise a built-in heuristic rule scan. Also adds the /misra command."
+    "description": "Run a MISRA C check on a project directory or on selected files from the composer: cppcheck with the MISRA addon, with the rule text, the Chinese requirement and auto-generated code skipped. Also adds the /misra command."
   }
 }

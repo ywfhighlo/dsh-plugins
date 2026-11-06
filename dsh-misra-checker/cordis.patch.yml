@@ -12,6 +12,25 @@
         # version check fails, so switch that check off for the analysis.
         defines:
           - 'DISABLE_MCAL_INTERMODULE_ASR_CHECK'
-        # Where the shared MCAL headers live (Eth_GeneralTypes.h etc.).
+          - 'CPU_TYPE=CPU_TYPE_32'
+          - 'CPU_BIT_ORDER=LSB_FIRST'
+          - 'CPU_BYTE_ORDER=LOW_BYTE_FIRST'
+          - 'TRUE=1u'
+          - 'FALSE=0u'
+          - 'STD_ON=1u'
+          - 'STD_OFF=0u'
+          - '__riscv'
+        # Include paths of the project (same set as tools/misra/cppcheck-misra.sh).
         includes:
+          - 'components/Mcal/Eth'
+          - 'components/Mcal/Saradc'
+          - 'components/Mcal/Dmac'
           - 'components/Mcal/Common'
+          - 'components/Mcal/Common/Integration'
+          - 'components/Mcal/Mcu'
+          - 'components/OS/common/include'
+          - 'components/metal/pdk/subsystems/include'
+          - 'components/metal/pdk'
+        # Reuse the suppression list the project already maintains, so the
+        # plugin and tools/misra/cppcheck-misra.sh report the same baseline.
+        suppressionsFile: 'tools/misra/suppressions.txt'
