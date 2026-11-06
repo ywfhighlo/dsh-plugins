@@ -25,7 +25,6 @@ export const Config = Schema.object({
   maxFindings: Schema.number().default(500).description("Cap on reported findings per run"),
 });
 
-const CHANNEL = "/misra";
 const MAX_FILES = 2000;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -328,11 +327,12 @@ class MisraCheckService {
 /**
  * Plugin entry point.
  *
- * The Client half talks to this Host half over the plugin's own RPC channel
- * (`/misra`). The Typert Gateway is not used on purpose: its SRC fallback
- * resolves `@deepseek-ai/dsh-typert-protocol` from its own installation, so a
+ * The Client half reaches this Host half over an exact Fetch route below the
+ * shared `/api` channel: `POST /api/misra/check`. The Typert Gateway is not
+ * used on purpose — its SRC fallback resolves
+ * `@deepseek-ai/dsh-typert-protocol` from its own installation, so a
  * separately installed bundle can never register remote markers the Gateway
- * can see — the endpoint would 404.
+ * can see, and the endpoint would 404.
  */
 export function apply(ctx, config = {}) {
   const service = new MisraCheckService(ctx, config);
@@ -352,34 +352,33 @@ export function apply(ctx, config = {}) {
   ctx.effect(() => { disposeCommand(); }, "@local/dsh-misra-checker: /misra command");
 
   ctx.effect(() => {
-    const release = ctx.connection.rpc.handle(CHANNEL, async (endpoint, payload, signal) => {
-      try {
-        if (endpoint === "check") {
-          return { ok: true, value: await service.check(payload?.path) };
+    const release = ctx.connection.fetch.register({
+      path: "/api/misra/check",
+      methods: ["POST"],
+      requestBody: "buffered",
+      fetch: async (request) => {
+        try {
+          const body = await request.json().catch(() => ({}));
+          const action = typeof body?.action === "string" ? body.action : "check";
+          if (action === "defaults") {
+            return Response.json({ ok: true, value: await service.defaults() });
+          }
+          const value = await service.check(typeof body?.path === "string" ? body.path : "");
+          return Response.json({ ok: true, value });
+        } catch (error) {
+          return Response.json({
+            ok: false,
+            error: {
+              code: "misra/check-failed",
+              message: error instanceof Error ? error.message : String(error),
+              details: {},
+            },
+          }, { status: 200 });
         }
-        if (endpoint === "defaults") {
-          return { ok: true, value: await service.defaults() };
-        }
-        if (endpoint === "probe") {
-          return { ok: true, value: await service.probe() };
-        }
-        return {
-          ok: false,
-          error: { code: "misra/unknown-endpoint", message: `unknown endpoint ${endpoint}`, details: {} },
-        };
-      } catch (error) {
-        return {
-          ok: false,
-          error: {
-            code: "misra/check-failed",
-            message: error instanceof Error ? error.message : String(error),
-            details: {},
-          },
-        };
-      }
+      },
     });
-    return () => { void release(); };
-  }, "@local/dsh-misra-checker: /misra RPC channel");
+    return () => { void release?.(); };
+  }, "@local/dsh-misra-checker: /api/misra/check route");
 }
 
 export default MisraCheckService;

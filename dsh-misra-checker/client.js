@@ -170,12 +170,18 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), "@local/dsh-misra-checker: dictionaries");
       const t = ctx.locale.bind(NS);
       const callRpc = async (method, args) => {
-        // The plugin's own RPC channel: the Host half registers `/misra` with
-        // ctx.connection.rpc.handle, so the Typert Gateway is not involved.
-        const r = await ctx.connection.rpc.call("/misra", method, args || {});
-        if (r && r.ok) return r.value;
-        const e = r && r.error;
-        throw new Error(e ? e.code + ": " + e.message : "rpc failed");
+        // The Host half registers the exact Fetch route `/api/misra/check`;
+        // the browser session cookie authenticates the request.
+        const response = await globalThis.fetch("/api/misra/check", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: method, ...(args || {}) }),
+        });
+        if (!response.ok) throw new Error("misra request failed: HTTP " + response.status);
+        const payload = await response.json();
+        if (payload && payload.ok) return payload.value;
+        const e = payload && payload.error;
+        throw new Error(e ? e.code + ": " + e.message : "misra request failed");
       };
       // Host directory picker: prefer the uiWorkspace client service, fall back
       // to the directoryPicker remote through the generic connection RPC.
