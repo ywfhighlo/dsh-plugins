@@ -2,17 +2,17 @@
 // Runs a MISRA C check over a project directory:
 //  - cppcheck with the MISRA addon when cppcheck is available, otherwise
 //  - a built-in line-based heuristic scan over a small subset of MISRA C:2012 rules.
-// The same operation is exposed as the RPC remote `misraCheck/check` (used by the
-// composer button) and as the `/misra` slash command.
-import { Remote, TypertRemoteService } from "@deepseek-ai/dsh-typert-protocol";
+// The same operation is exposed on the plugin's own RPC channel (`/misra`,
+// used by the composer button) and as the `/misra` slash command.
 import Schema from "@deepseek-ai/schemastery";
 import { spawn } from "node:child_process";
 import fsp from "node:fs/promises";
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export const name = "@local/dsh-misra-checker";
-export const inject = ["commands"];
+export const inject = ["commands", "connection", "agents", "sessions", "workingDirectory"];
 
 export const Config = Schema.object({
   root: Schema.string().default("").description("Default directory to check when the caller passes none (absolute path)"),
@@ -25,7 +25,7 @@ export const Config = Schema.object({
   maxFindings: Schema.number().default(500).description("Cap on reported findings per run"),
 });
 
-const NAMESPACE = "misraCheck";
+const CHANNEL = "/misra";
 const MAX_FILES = 2000;
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
 
@@ -154,7 +154,7 @@ function runCommand(cmd, args, opts = {}) {
 // value is first tried against this package's directory (so the bundled
 // `vendor/cppcheck/cppcheck.exe` travels with the plugin folder), then against
 // the process working directory, and finally as a bare command name on PATH.
-const PKG_DIR = path.dirname(new URL(".", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
+const PKG_DIR = path.dirname(fileURLToPath(new URL(".", import.meta.url)));
 function resolveCppcheck(configured) {
   const value = String(configured || "").trim();
   if (!value) return { cmd: "cppcheck" };
@@ -209,24 +209,10 @@ function summarize(result) {
   return { total: result.findings.length, errors, warnings: result.findings.length - errors };
 }
 
-class MisraCheckService extends TypertRemoteService {
-  static inject = ["commands", "agents", "sessions", "workingDirectory"];
+class MisraCheckService {
   constructor(ctx, config = {}) {
-    super(ctx, NAMESPACE);
+    this.ctx = ctx;
     this.config = config;
-    const disposeCommand = ctx.commands.register({
-      name: "misra",
-      description: "Run a MISRA C check (cppcheck + MISRA addon, or the built-in fallback rules)",
-      handler: async (invocation) => {
-        const agent = invocation?.agent;
-        const cwd = agent?.session?.header?.cwd ?? this.resolveDefaultDir().dir;
-        const line = String(invocation?.line ?? "");
-        const target = line.replace(/^\s*\/?misra\s*/i, "").trim();
-        const result = await this.runCheck(target || cwd);
-        return { kind: "success", text: this.formatText(result) };
-      },
-    });
-    ctx.effect(() => { disposeCommand(); }, "@local/dsh-misra-checker: /misra command");
   }
 
   /**
@@ -324,36 +310,76 @@ class MisraCheckService extends TypertRemoteService {
   }
 
   /**
-   * Remote method. The gateway maps the JSON field named after the parameter,
-   * so the client must send `{ path: "<dir>" }`; an empty path falls back to
-   * the resolved default directory (the current project).
+   * RPC endpoint: the client sends `{ path: "<dir>" }`; an empty path falls
+   * back to the resolved default directory (the current project).
    */
-  async check(path) {
-    const target = typeof path === "string" ? path.trim() : "";
+  async check(dir) {
+    const target = typeof dir === "string" ? dir.trim() : "";
     return this.runCheck(target || this.resolveDefaultDir().dir);
   }
 
-  /** Remote method: the directory the checker defaults to, with its origin. */
+  /** RPC endpoint: the directory the checker defaults to, with its origin. */
   async defaults() {
     const resolved = this.resolveDefaultDir();
     return { dir: resolved.dir, source: resolved.source };
   }
 }
 
-// Expose methods to the Typert Gateway without decorator syntax (plain JS).
-// `Remote(<name>)` returns a standard method decorator. TS-compiled classes run
-// the decorator's initializer with `this` = the instance, so the marker lands on
-// `MisraCheckService.prototype`; we emulate the same call.
-function exposeMethod(cls, method, exportName) {
-  Remote(exportName ?? method)(undefined, {
-    name: method,
-    private: false,
-    static: false,
-    addInitializer(fn) { fn.call(Object.create(cls.prototype)); },
+/**
+ * Plugin entry point.
+ *
+ * The Client half talks to this Host half over the plugin's own RPC channel
+ * (`/misra`). The Typert Gateway is not used on purpose: its SRC fallback
+ * resolves `@deepseek-ai/dsh-typert-protocol` from its own installation, so a
+ * separately installed bundle can never register remote markers the Gateway
+ * can see — the endpoint would 404.
+ */
+export function apply(ctx, config = {}) {
+  const service = new MisraCheckService(ctx, config);
+
+  const disposeCommand = ctx.commands.register({
+    name: "misra",
+    description: "Run a MISRA C check (cppcheck + MISRA addon, or the built-in fallback rules)",
+    handler: async (invocation) => {
+      const agent = invocation?.agent;
+      const cwd = agent?.session?.header?.cwd ?? service.resolveDefaultDir().dir;
+      const line = String(invocation?.line ?? "");
+      const target = line.replace(/^\s*\/?misra\s*/i, "").trim();
+      const result = await service.runCheck(target || cwd);
+      return { kind: "success", text: service.formatText(result) };
+    },
   });
+  ctx.effect(() => { disposeCommand(); }, "@local/dsh-misra-checker: /misra command");
+
+  ctx.effect(() => {
+    const release = ctx.connection.rpc.handle(CHANNEL, async (endpoint, payload, signal) => {
+      try {
+        if (endpoint === "check") {
+          return { ok: true, value: await service.check(payload?.path) };
+        }
+        if (endpoint === "defaults") {
+          return { ok: true, value: await service.defaults() };
+        }
+        if (endpoint === "probe") {
+          return { ok: true, value: await service.probe() };
+        }
+        return {
+          ok: false,
+          error: { code: "misra/unknown-endpoint", message: `unknown endpoint ${endpoint}`, details: {} },
+        };
+      } catch (error) {
+        return {
+          ok: false,
+          error: {
+            code: "misra/check-failed",
+            message: error instanceof Error ? error.message : String(error),
+            details: {},
+          },
+        };
+      }
+    });
+    return () => { void release(); };
+  }, "@local/dsh-misra-checker: /misra RPC channel");
 }
-exposeMethod(MisraCheckService, "check");
-exposeMethod(MisraCheckService, "defaults");
-exposeMethod(MisraCheckService, "probe");
 
 export default MisraCheckService;

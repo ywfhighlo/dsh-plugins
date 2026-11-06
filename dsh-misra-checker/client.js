@@ -170,7 +170,9 @@ window.__ModuleLoader__.load({
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), "@local/dsh-misra-checker: dictionaries");
       const t = ctx.locale.bind(NS);
       const callRpc = async (method, args) => {
-        const r = await ctx.connection.rpc.call("/api", "misraCheck/" + method, { args: args || {} });
+        // The plugin's own RPC channel: the Host half registers `/misra` with
+        // ctx.connection.rpc.handle, so the Typert Gateway is not involved.
+        const r = await ctx.connection.rpc.call("/misra", method, args || {});
         if (r && r.ok) return r.value;
         const e = r && r.error;
         throw new Error(e ? e.code + ": " + e.message : "rpc failed");
