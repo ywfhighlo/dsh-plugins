@@ -153,10 +153,12 @@ function runCommand(cmd, args, opts = {}) {
 // value is first tried against this package's directory (so the bundled
 // `vendor/cppcheck/cppcheck.exe` travels with the plugin folder), then against
 // the process working directory, and finally as a bare command name on PATH.
-const PKG_DIR = path.dirname(fileURLToPath(new URL(".", import.meta.url)));
+// `new URL(".", import.meta.url)` already resolves to this package's directory
+// (with a trailing separator), so it must not be passed through dirname again.
+const PKG_DIR = fileURLToPath(new URL(".", import.meta.url));
+const DEFAULT_CPPCHECK = "vendor/cppcheck/cppcheck.exe";
 function resolveCppcheck(configured) {
-  const value = String(configured || "").trim();
-  if (!value) return { cmd: "cppcheck" };
+  const value = String(configured || "").trim() || DEFAULT_CPPCHECK;
   if (path.isAbsolute(value)) return { cmd: value };
   const candidates = [path.join(PKG_DIR, value), path.resolve(value)];
   for (const c of candidates) {
@@ -179,8 +181,9 @@ async function cppcheckScan(root, cfg, projectRoot, signal) {
     ...defines, ...includes,
     ...extra, root,
   ];
-  const r = await runCommand(resolveCppcheck(cfg.cppcheck).cmd, args, { timeoutMs: 300000 });
-  if (r.error) return { unavailable: true, reason: r.error };
+  const { cmd } = resolveCppcheck(cfg.cppcheck);
+  const r = await runCommand(cmd, args, { timeoutMs: 300000 });
+  if (r.error) return { unavailable: true, reason: `${r.error} (tried: ${cmd})` };
   const text = (r.out || "") + "\n" + (r.err || "");
   if (/[Cc]ould ?n[o']t find.*addon|addon.*not found|--addon/.test(text) && !/misra-c2012/.test(text)) {
     return { unavailable: true, reason: "cppcheck MISRA addon not installed" };
@@ -335,7 +338,12 @@ class MisraCheckService {
  * can see, and the endpoint would 404.
  */
 export function apply(ctx, config = {}) {
-  const service = new MisraCheckService(ctx, config);
+  // The Host may hand over a partial config (a bundle patch only carries the
+  // keys it sets); validating through the schema fills in every default.
+  let resolved = config ?? {};
+  try { resolved = Config(resolved); } catch { resolved = config ?? {}; }
+  const service = new MisraCheckService(ctx, resolved);
+  const resolvedConfig = resolved;
 
   const disposeCommand = ctx.commands.register({
     name: "misra",
@@ -360,6 +368,22 @@ export function apply(ctx, config = {}) {
         try {
           const body = await request.json().catch(() => ({}));
           const action = typeof body?.action === "string" ? body.action : "check";
+          if (action === "diag") {
+            const exe = path.join(PKG_DIR, DEFAULT_CPPCHECK);
+            return Response.json({
+              ok: true,
+              value: {
+                pkgDir: PKG_DIR,
+                cwd: process.cwd(),
+                configured: resolvedConfig?.cppcheck,
+                resolvedCmd: resolveCppcheck(resolvedConfig?.cppcheck).cmd,
+                exePath: exe,
+                exeExists: (() => { try { return fs.existsSync(exe); } catch (e) { return String(e); } })(),
+                vendorExists: (() => { try { return fs.existsSync(path.join(PKG_DIR, "vendor")); } catch (e) { return String(e); } })(),
+                indexExists: (() => { try { return fs.existsSync(path.join(PKG_DIR, "index.js")); } catch (e) { return String(e); } })(),
+              },
+            });
+          }
           if (action === "defaults") {
             return Response.json({ ok: true, value: await service.defaults() });
           }
@@ -380,5 +404,3 @@ export function apply(ctx, config = {}) {
     return () => { void release?.(); };
   }, "@local/dsh-misra-checker: /api/misra/check route");
 }
-
-export default MisraCheckService;

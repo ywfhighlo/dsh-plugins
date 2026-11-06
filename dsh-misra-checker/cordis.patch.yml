@@ -2,6 +2,9 @@
     - id: misra-checker
       name: '@local/dsh-misra-checker'
       config:
+        # The bundled cppcheck travels with this folder; the value is resolved
+        # relative to the plugin directory.
+        cppcheck: 'vendor/cppcheck/cppcheck.exe'
         # The project root holds far more than the code to check; narrow the
         # default target to the folder that actually contains the sources.
         subdir: 'components/Mcal/Eth'
