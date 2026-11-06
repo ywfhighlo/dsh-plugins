@@ -50,6 +50,17 @@ window.__ModuleLoader__.load({
       listing: "正在列出文件…",
       mandatory: "强制",
       advisory: "建议",
+      report: "报告文件",
+      openReport: "打开报告",
+      sendToChat: "发给 AI 分析",
+      reportMissing: "本次检查没有生成报告文件。",
+      needSession: "找不到当前会话，无法打开报告。",
+      sent: "报告摘要已发送到聊天。",
+      sendFailed: "发送失败",
+      copied: "摘要已复制到剪贴板，请粘贴到聊天框。",
+      duration: "用时",
+      showFindings: "查看明细",
+      hideFindings: "收起明细",
     };
     const en = {
       run: "MISRA C check",
@@ -84,6 +95,17 @@ window.__ModuleLoader__.load({
       listing: "Listing files…",
       mandatory: "Mandatory",
       advisory: "Advisory",
+      report: "Report",
+      openReport: "Open report",
+      sendToChat: "Send to AI",
+      reportMissing: "This run produced no report file.",
+      needSession: "No current session found; the report cannot be opened.",
+      sent: "The report summary was sent to the chat.",
+      sendFailed: "Send failed",
+      copied: "The summary was copied to the clipboard; paste it into the chat.",
+      duration: "took",
+      showFindings: "Show findings",
+      hideFindings: "Hide findings",
     };
 
     const CSS = [
@@ -115,6 +137,11 @@ window.__ModuleLoader__.load({
       ".msr-tag{font-size:10px;line-height:14px;padding:0 6px;border-radius:6px;background:var(--dsw-alias-bg-layer-3);color:var(--dsw-alias-label-tertiary);white-space:nowrap}",
       ".msr-check{display:flex;gap:6px;align-items:center;font-size:11.5px;color:var(--dsw-alias-label-secondary);white-space:nowrap}",
       ".msr-check input{margin:0;accent-color:var(--dsw-alias-brand-primary)}",
+      ".msr-result{display:flex;flex-direction:column;gap:6px;padding-top:6px;border-top:1px dashed var(--dsw-alias-border-l2)}",
+      ".msr-report{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}",
+      ".msr-link{font:inherit;font-size:11.5px;line-height:17px;padding:0;border:none;background:none;color:var(--dsw-alias-brand-primary);cursor:pointer;text-decoration:underline;text-underline-offset:2px;word-break:break-all;text-align:left}",
+      ".msr-btn--primary{background:var(--dsw-alias-state-business-primary);border-color:var(--dsw-alias-state-business-primary);color:var(--dsw-alias-label-primary)}",
+      ".msr-ok{font-size:12px;line-height:18px;color:var(--dsw-alias-state-success-primary)}",
     ].join("\n");
 
     function installStyles(ctx) {
@@ -128,12 +155,13 @@ window.__ModuleLoader__.load({
       }, "@local/dsh-misra-checker: styles");
     }
 
-    function MisraPanel({ callRpc, t, pickDirectory }) {
+    function MisraPanel({ callRpc, t, pickDirectory, sessionId, openReport, sendToChat }) {
       const [dir, setDir] = useState(() => { try { return window.localStorage.getItem(LS_KEY) || ""; } catch { return ""; } });
       const [running, setRunning] = useState(false);
       const [result, setResult] = useState(null);
       const [error, setError] = useState(null);
-      const [open, setOpen] = useState(true);
+      const [notice, setNotice] = useState(null);
+      const [open, setOpen] = useState(false);
       const [defaultDir, setDefaultDir] = useState(null);
       const [files, setFiles] = useState([]);
       const [listing, setListing] = useState(false);
@@ -195,6 +223,7 @@ window.__ModuleLoader__.load({
         try { window.localStorage.setItem(LS_KEY, target); } catch {}
         setRunning(true);
         setError(null);
+        setNotice(null);
         try {
           const chosen = Array.from(selected);
           const r = await callRpc("check", {
@@ -203,12 +232,38 @@ window.__ModuleLoader__.load({
             excludeGenerated: skipGenerated,
           });
           setResult(r);
-          setOpen(true);
+          setOpen(false);
         } catch (e) {
           setError(String((e && e.message) || e));
           setResult(null);
         } finally {
           setRunning(false);
+        }
+      };
+
+      // Open the written report in the right-hand document preview.
+      const openTheReport = async () => {
+        setError(null);
+        setNotice(null);
+        try {
+          const report = result && result.report;
+          if (!report || !report.path) throw new Error(t("reportMissing"));
+          await openReport(report, { sessionId: result.sessionId || sessionId, cwd: result.cwd });
+        } catch (e) {
+          setError(String((e && e.message) || e));
+        }
+      };
+
+      // Hand the report summary to the agent, so it can analyse the findings.
+      const sendTheReport = async () => {
+        setError(null);
+        setNotice(null);
+        try {
+          const target = (result && result.sessionId) || sessionId;
+          const text = await sendToChat({ sessionId: target, result });
+          setNotice(text || t("sent"));
+        } catch (e) {
+          setError(t("sendFailed") + ": " + String((e && e.message) || e));
         }
       };
 
@@ -264,15 +319,26 @@ window.__ModuleLoader__.load({
             }),
             h("span", { className: "msr-fname" }, f.name),
             f.generated ? h("span", { className: "msr-tag" }, t("generated")) : null))) : null,
-        result ? h("div", { className: "msr-meta" },
-          (result.engine === "cppcheck" ? t("engineCppcheck") : t("engineBuiltin")) +
-          " · " + result.total + " " + t("findings") + " (" + result.errors + " " + t("errors") + ", " + result.warnings + " " + t("warnings") + ")" +
-          (result.filesScanned ? " · " + result.filesScanned + " " + t("filesScanned") : ""),
+        result ? h("div", { className: "msr-result" },
+          h("div", { className: "msr-meta" },
+            (result.engine === "cppcheck" ? t("engineCppcheck") : t("engineBuiltin")) +
+            " · " + result.total + " " + t("findings") + " (" + result.errors + " " + t("errors") + ", " + result.warnings + " " + t("warnings") + ")" +
+            (result.filesScanned ? " · " + result.filesScanned + " " + t("filesScanned") : "") +
+            (result.durationMs !== undefined ? " · " + t("duration") + " " + (result.durationMs / 1000).toFixed(1) + "s" : "")),
           result.note ? h("div", { className: "msr-meta" }, result.note) : null,
-          findings.length === 0 ? h("div", { className: "msr-meta" }, t("noFindings")) : null) : null,
+          findings.length === 0 ? h("div", { className: "msr-meta" }, t("noFindings")) : null,
+          result.report ? h("div", { className: "msr-meta msr-report" },
+            t("report") + ": ",
+            h("button", {
+              className: "msr-link", title: result.report.path,
+              onClick: openTheReport,
+            }, result.report.relativePath || result.report.name)) : null,
+          h("div", { className: "msr-row" },
+            result.report ? h("button", { className: "msr-btn msr-btn--primary", onClick: openTheReport }, t("openReport")) : null,
+            result.report ? h("button", { className: "msr-btn", onClick: sendTheReport }, t("sendToChat")) : null,
+            findings.length > 0 ? h("button", { className: "msr-toggle", onClick: () => setOpen((v) => !v) }, open ? t("hideFindings") + " ▴" : t("showFindings") + " (" + findings.length + ") ▾") : null)) : null,
+        notice ? h("div", { className: "msr-ok" }, notice) : null,
         error ? h("div", { className: "msr-err" }, t("failed") + ": " + error) : null,
-        findings.length > 0 ? h("div", { className: "msr-row" },
-          h("button", { className: "msr-toggle", onClick: () => setOpen((v) => !v) }, open ? t("collapsed") + " ▴" : t("open") + " ▾")) : null,
         open && findings.length > 0 ? h("div", { className: "msr-list" },
           findings.map((f, i) => h("div", { className: "msr-item msr-item--" + (f.severity === "error" ? "err" : "warn"), key: i },
             h("span", { className: "msr-loc" }, f.file + ":" + f.line),
@@ -282,7 +348,21 @@ window.__ModuleLoader__.load({
             f.zh ? h("span", { className: "msr-zh" }, f.zh) : null))) : null);
     }
 
-    const inject = ["slots", "locale", "connection"];
+    const inject = ["slots", "locale", "connection", "sidebarRight", "remote"];
+
+    // `dsh-resource://file/session/<sessionId>/<path>` addresses are what the
+    // right-hand document preview reads. The path is workspace-relative when it
+    // lives under the session's working directory, absolute otherwise.
+    const encodeSegment = (segment) => encodeURIComponent(segment).replace(/%3A/gi, ":");
+    const encodePath = (value) => String(value).split("/").map(encodeSegment).join("/");
+    function fileAddress(sessionId, filePath, cwd) {
+      const normalized = String(filePath).replace(/\\/g, "/");
+      let target = normalized;
+      const root = String(cwd || "").replace(/\\/g, "/").replace(/\/+$/, "");
+      if (root && normalized.startsWith(root + "/")) target = normalized.slice(root.length + 1);
+      return `dsh-resource://file/session/${encodeSegment(String(sessionId))}/${encodePath(target)}`;
+    }
+
     function apply(ctx) {
       installStyles(ctx);
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), "@local/dsh-misra-checker: dictionaries");
@@ -314,11 +394,55 @@ window.__ModuleLoader__.load({
         if (r && r.ok) return r.value;
         throw new Error("directory picker unavailable");
       };
+      // Open the report in the right-hand document preview.
+      const openReport = async (report, { sessionId, cwd } = {}) => {
+        const target = sessionId || (await currentSessionId());
+        if (!target) throw new Error(t("needSession"));
+        const sidebarRight = ctx.get("sidebarRight");
+        if (!sidebarRight || typeof sidebarRight.openResource !== "function") {
+          throw new Error("document preview unavailable");
+        }
+        sidebarRight.openResource(fileAddress(target, report.path, cwd));
+      };
+
+      // The session the panel belongs to; the Host knows it as well.
+      const currentSessionId = async () => {
+        try {
+          const d = await callRpc("defaults", {});
+          return d && typeof d.sessionId === "string" ? d.sessionId : undefined;
+        } catch {
+          return undefined;
+        }
+      };
+
+      // Hand the report to the agent: the Host command turns the previous run
+      // into a short summary and the agent reads the report file itself.
+      const sendToChat = async ({ sessionId } = {}) => {
+        const target = sessionId || (await currentSessionId());
+        if (!target) throw new Error(t("needSession"));
+        const commands = ctx.get("remote")?.commands;
+        if (!commands || typeof commands.execute !== "function") {
+          // No command channel: fall back to the clipboard.
+          const summary = await callRpc("summary", {});
+          if (summary && summary.text && navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(summary.text);
+            return t("copied");
+          }
+          throw new Error("command channel unavailable");
+        }
+        const outcome = await commands.execute(target, "/misra report", []);
+        if (!outcome || outcome.ok === false) {
+          const error = outcome && outcome.error;
+          throw new Error(error ? `${error.code}: ${error.message}` : "command failed");
+        }
+        return t("sent");
+      };
+
       ctx.slots.inject("conversation.composer.dock", () => ctx.slots.register({
         name: "conversation.composer.dock",
         id: "@local/dsh-misra-checker",
         order: 20,
-        inject: () => ({ callRpc, t: (k) => t(k), pickDirectory }),
+        inject: (sessionId) => ({ callRpc, t: (k) => t(k), pickDirectory, sessionId, openReport, sendToChat }),
       }, MisraPanel));
     }
     exports.apply = apply;
