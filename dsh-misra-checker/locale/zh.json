@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MISRA C 检查器",
+    "description": "在输入区一键对项目目录执行 MISRA C 检查：优先调用 cppcheck（MISRA 插件），未安装时回退到内置启发式规则；同时提供 /misra 命令。"
+  }
+}

@@ -1,0 +1,4 @@
+- insert:
+    - id: misra-checker
+      name: '@local/dsh-misra-checker'
+      config: {}

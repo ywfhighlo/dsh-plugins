@@ -1,0 +1,8 @@
+# Node dependencies — restore with: pnpm install
+node_modules/
+.pnpm-store/
+
+# logs / editor noise
+*.log
+.DS_Store
+Thumbs.db
