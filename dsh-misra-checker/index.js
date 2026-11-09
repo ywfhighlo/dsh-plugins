@@ -29,7 +29,9 @@ export const Config = Schema.object({
   inlineSuppressions: Schema.boolean().default(true).description("Honour inline 'cppcheck-suppress' comments in the code"),
   suppressionsFile: Schema.string().default("").description("cppcheck suppressions list, absolute or relative to the project root (e.g. tools/misra/suppressions.txt); empty for none"),
   maxConfigs: Schema.number().default(1).description("cppcheck --max-configs (1 = default configuration only, fast)"),
-  ctuDepth: Schema.number().default(0).description("cppcheck --max-ctu-depth (cross-translation-unit analysis; 0 disables it)"),
+  ctuDepth: Schema.number().default(0).description("cppcheck --max-ctu-depth (cross-translation-unit analysis; 0 disables it). With companion TUs present, 0 automatically becomes 4"),
+  companions: Schema.array(Schema.string()).default([]).description("Extra translation units analyzed alongside the selection so cross-TU rules (8.7/8.5) see the real callers; paths relative to the project root; overrides companionsFile"),
+  companionsFile: Schema.string().default("tools/misra/companions.txt").description("Companion TU list reused from the project (one path per line, '#' comments), relative to the project root; empty for none. Findings in companions stay out of the report"),
   timeoutMs: Schema.number().default(900000).description("cppcheck run timeout in milliseconds"),
   ruleTexts: Schema.boolean().default(true).description("Report the MISRA C:2012 rule text with every finding"),
   tempDir: Schema.string().default("").description("Directory for intermediate files (file list, addon config, cppcheck cache); empty means the system temp directory"),
@@ -247,7 +249,7 @@ function resolveCppcheck(configured) {
   return { cmd: value };
 }
 
-async function cppcheckScan(root, cfg, projectRoot, files, suppressFiles, scope, signal) {
+async function cppcheckScan(root, cfg, projectRoot, files, suppressFiles, scope, signal, ctuDepth) {
   const extra = cfg.cppcheckArgs ? cfg.cppcheckArgs.split(/\s+/).filter(Boolean) : [];
   const defines = (cfg.defines ?? []).map((d) => `-D${d}`);
   const includes = (cfg.includes ?? []).map((dir) => {
@@ -269,7 +271,8 @@ async function cppcheckScan(root, cfg, projectRoot, files, suppressFiles, scope,
   ];
   if (cfg.inlineSuppressions !== false) args.push("--inline-suppr");
   if (cfg.maxConfigs) args.push(`--max-configs=${cfg.maxConfigs}`);
-  if (cfg.ctuDepth) args.push(`--max-ctu-depth=${cfg.ctuDepth}`);  // cppcheck caches compiled headers as .a files; without a build directory it
+  const effectiveCtu = ctuDepth ?? cfg.ctuDepth ?? 0;
+  if (effectiveCtu) args.push(`--max-ctu-depth=${effectiveCtu}`);  // cppcheck caches compiled headers as .a files; without a build directory it
   // drops them into the current working directory.
   try {
     buildDir = path.join(tempRoot, `${runId}-build`);
@@ -425,7 +428,9 @@ function buildReport(result, meta = {}) {
   lines.push(`| 检查目录 | \`${result.root}\` |`);
   if (meta.scope) lines.push(`| 检查范围 | ${escapeCell(meta.scope)} |`);
   lines.push(`| 扫描文件 | ${result.filesScanned ?? 0} |`);
-  if (result.durationMs !== undefined) lines.push(`| 用时 | ${humanDuration(result.durationMs)} |`);
+  if (result.ctu && result.ctu.depth > 0) {
+    lines.push(`| 跨单元分析 | CTU depth ${result.ctu.depth}，${result.ctu.companions} 个伙伴 TU（其发现不计入报告） |`);
+  }  if (result.durationMs !== undefined) lines.push(`| 用时 | ${humanDuration(result.durationMs)} |`);
   lines.push(`| 问题总数 | ${s.total}（强制 ${mandatory} / 建议 ${advisory}） |`);
   if (result.note) lines.push(`| 备注 | ${escapeCell(result.note)} |`);
   lines.push("");
@@ -613,6 +618,36 @@ class MisraCheckService {
    * Run the check over a directory, or over an explicit list of files inside
    * it. `selected` holds absolute paths (or paths relative to `root`).
    */
+  /**
+   * Resolve the companion translation units: an explicit `companions` config
+   * wins, otherwise the project's companions list is read (one path per line,
+   * '#' comments). Missing entries are dropped silently — the list travels
+   * with the repository and not every branch carries every companion.
+   */
+  async resolveCompanions(projectRoot, scanRoot) {
+    const cfg = this.config;
+    let entries = Array.isArray(cfg.companions)
+      ? cfg.companions.filter((entry) => typeof entry === "string" && entry.trim() !== "")
+      : [];
+    if (entries.length === 0) {
+      const file = String(cfg.companionsFile ?? "").trim();
+      if (file === "") return [];
+      const abs = path.isAbsolute(file) ? file : path.resolve(projectRoot, file);
+      const raw = await fsp.readFile(abs, "utf8").catch(() => "");
+      entries = raw.split(/\r?\n/)
+        .map((line) => line.trim())
+        .filter((line) => line !== "" && !line.startsWith("#"));
+    }
+    const out = [];
+    for (const entry of entries) {
+      const abs = path.isAbsolute(entry) ? entry : path.resolve(projectRoot, entry);
+      try {
+        if (fs.statSync(abs).isFile()) out.push(path.resolve(abs));
+      } catch {}
+    }
+    return [...new Set(out)];
+  }
+
   async runCheck(targetDir, options = {}) {
     const cfg = this.config;
     const project = this.resolveProjectRoot();
@@ -649,11 +684,22 @@ class MisraCheckService {
     // The report scope: the selected files when the caller picked some, every
     // scanned file of the directory otherwise.
     const scope = new Set(files.map((file) => path.resolve(file)));
+    // Companion TUs: analyzed in the same run so cross-TU rules (8.7/8.5) see
+    // the real callers, but their findings stay outside the report scope. The
+    // project's own companions list (e.g. tools/misra/companions.txt) is the
+    // natural source; without it cppcheck's single-TU view reports every
+    // external function as an 8.7 violation.
+    const companions = await this.resolveCompanions(project.dir, root);
+    const ctuDepth = cfg.ctuDepth > 0 ? cfg.ctuDepth : (companions.length > 0 ? 4 : 0);
+    const analysisFiles = companions.length > 0
+      ? [...files, ...companions.filter((c) => !scope.has(c))]
+      : files;
     const started = Date.now();
     const finish = async (result) => {
       result.durationMs = Date.now() - started;
       result.sessionId = project.sessionId;
       result.cwd = project.dir;
+      result.ctu = { depth: ctuDepth, companions: companions.length };
       result.scope = selected.length > 0
         ? `${files.length} 个选定文件（已排除自动生成代码）`
         : `目录内全部 ${files.length} 个文件`;
@@ -675,7 +721,7 @@ class MisraCheckService {
       });
     }
 
-    const cpp = await cppcheckScan(root, cfg, project.dir, files, excludeGenerated ? generatedFiles : [], scope);
+    const cpp = await cppcheckScan(root, cfg, project.dir, analysisFiles, excludeGenerated ? generatedFiles : [], scope, undefined, ctuDepth);
     if (!cpp.unavailable) {
       const capped = cpp.findings.length >= cfg.maxFindings;
       return await finish({
@@ -686,6 +732,7 @@ class MisraCheckService {
         note: [
           capped ? `showing the first ${cfg.maxFindings} findings (raise the 'maxFindings' config for more)` : undefined,
           skipped > 0 ? `${skipped} auto-generated file(s) skipped` : undefined,
+          companions.length > 0 ? `${companions.length} companion TU(s) analyzed for cross-TU rules (ctu-depth ${ctuDepth})` : undefined,
         ].filter(Boolean).join("; ") || cpp.note,
         ...summarize(cpp),
       });

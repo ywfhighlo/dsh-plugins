@@ -112,7 +112,9 @@ the run's output, not a leftover.
 | `inlineSuppressions` | `true` | honour inline `cppcheck-suppress` comments |
 | `suppressionsFile` | `""` | cppcheck suppressions list, absolute or relative to the project root |
 | `maxConfigs` | `1` | `--max-configs`; 1 = default configuration only (fast) |
-| `ctuDepth` | `0` | `--max-ctu-depth`; cross-TU analysis, 0 disables it |
+| `ctuDepth` | `0` | `--max-ctu-depth`; with companion TUs present, 0 automatically becomes 4 |
+| `companions` | `[]` | extra translation units analyzed for cross-TU rules; overrides `companionsFile` |
+| `companionsFile` | `"tools/misra/companions.txt"` | the project's companion TU list (one path per line, `#` comments); companion findings stay out of the report |
 | `timeoutMs` | `900000` | cppcheck run timeout |
 | `ruleTexts` | `true` | report the MISRA rule text with every finding |
 | `tempDir` | `""` | directory for intermediate files; empty = system temp |
@@ -136,6 +138,18 @@ lives) — the shipped `cordis.patch.yml` shows this for the Eth module.
 
 The built-in scanner is only a fallback: it approximates a few textually
 detectable rules. Real coverage comes from the bundled cppcheck.
+
+### Cross-TU rules and companion translation units
+
+Rule 8.7 (and 8.5) can only be judged after seeing every translation unit: a
+single-TU run reports every external function as "referenced in only one TU".
+When the project keeps a companions list (`tools/misra/companions.txt` — the
+same file its own MISRA script uses), the plugin analyzes those TUs in the same
+cppcheck run and enables CTU (depth 4) automatically; their findings stay out
+of the report. Measured on the Eth module: 142 false 8.7s dropped to 26, and
+the 24 remaining ones sit in the vendor `Eth.c` whose callers (EthIf, app) are
+not in the list — de-select it in the panel or extend the companions file to
+silence those too. Runs stay fast (~50 s) because `maxConfigs` stays at 1.
 
 ### Reusing the project's own baseline
 
